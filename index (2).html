@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة Perfekt mit sein 🇩🇪</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 min-h-screen p-4 flex items-center justify-center">
+
+    <div class="bg-white/95 backdrop-blur w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden border-4 border-yellow-300">
+        
+        <!-- Header -->
+        <div class="bg-yellow-400 p-5 text-center text-gray-900 font-bold relative">
+            <h1 class="text-2xl font-black">🚀 مغامرة الـ Perfekt مع الفعل المساعد SEIN</h1>
+            <p class="text-xs text-gray-800 mt-1">A2 - اختر الفعل المساعد أو رتب الجملة السحرية!</p>
+            <div id="score" class="absolute top-3 left-3 bg-white px-3 py-1 rounded-full text-sm font-bold shadow text-purple-700">⭐ 0</div>
+        </div>
+
+        <div class="p-6">
+            <!-- Mode Switcher -->
+            <div class="flex justify-center gap-3 mb-6">
+                <button id="btn-mcq" onclick="setMode('mcq')" class="bg-purple-600 text-white font-bold px-4 py-2 rounded-xl shadow">🎯 اختيارات</button>
+                <button id="btn-order" onclick="setMode('order')" class="bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded-xl shadow">🧩 ترتيب الجمل</button>
+            </div>
+
+            <!-- Question Box -->
+            <div id="q-box" class="bg-indigo-50 border-2 border-indigo-200 p-4 rounded-2xl text-center mb-6">
+                <h2 id="q-title" class="text-xl font-bold text-gray-800">جاري التحميل...</h2>
+                <p id="q-hint" class="text-xs text-indigo-600 mt-2 font-semibold"></p>
+            </div>
+
+            <!-- Interactive Area -->
+            <div id="interactive-area" class="mb-4"></div>
+
+            <!-- Feedback -->
+            <div id="feedback" class="text-center font-bold text-lg hidden py-2 rounded-xl mb-4"></div>
+
+            <!-- Next Button -->
+            <button id="next-btn" onclick="nextQuestion()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-2xl shadow-lg hidden">
+                السؤال التالي ➡️
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const mcqData = [
+            {
+                q: "Ich ___ gestern nach Berlin gefahren.",
+                opts: ["bin", "bist", "ist", "sind"],
+                correct: 0,
+                hint: "مع الضمير Ich نستخدم الفعل المساعد bin"
+            },
+            {
+                q: "Wann ___ du nach Hause gekommen?",
+                opts: ["bin", "bist", "ist", "seid"],
+                correct: 1,
+                hint: "مع الضمير du نستخدم الفعل المساعد bist"
+            },
+            {
+                q: "Mein Bruder ___ nach Deutschland geflogen.",
+                opts: ["bist", "ist", "sind", "seid"],
+                correct: 1,
+                hint: "Mein Bruder = er يأخذ الفعل المساعد ist"
+            },
+            {
+                q: "Wir ___ am Wochenende zu Hause geblieben.",
+                opts: ["bin", "ist", "sind", "seid"],
+                correct: 2,
+                hint: "مع الضمير wir نستخدم الفعل المساعد sind"
+            },
+            {
+                q: "Wohin ___ ihr gelaufen, Kinder?",
+                opts: ["bist", "ist", "sind", "seid"],
+                correct: 3,
+                hint: "مع الضمير ihr نستخدم الفعل المساعد seid"
+            },
+            {
+                q: "Die Kinder ___ in den Park gegangen.",
+                opts: ["ist", "sind", "seid", "bin"],
+                correct: 1,
+                hint: "Die Kinder = الجمع (sie) يأخذ sind"
+            }
+        ];
+
+        const orderData = [
+            {
+                words: ["nach Hause", "gekommen", "Ich", "bin", "gestern"],
+                accepted: [
+                    ["Ich", "bin", "gestern", "nach Hause", "gekommen"],
+                    ["Gestern", "bin", "ich", "nach Hause", "gekommen"]
+                ],
+                hint: "الفعل المساعد bin في المركز الثاني، والـ Partizip II (gekommen) في النهاية!"
+            },
+            {
+                words: ["gefahren", "du", "Bist", "nach Berlin", "?"],
+                accepted: [
+                    ["Bist", "du", "nach Berlin", "gefahren", "?"]
+                ],
+                hint: "سؤال يبدأ بالفعل المساعد Bist وينتهي بـ gefahren!"
+            },
+            {
+                words: ["in den Park", "gegangen", "Wir", "sind"],
+                accepted: [
+                    ["Wir", "sind", "in den Park", "gegangen"]
+                ],
+                hint: "Wir + sind + باقي الجملة + gegangen"
+            },
+            {
+                words: ["geblieben", "ist", "zu Hause", "Anna"],
+                accepted: [
+                    ["Anna", "ist", "zu Hause", "geblieben"]
+                ],
+                hint: "Anna + ist + zu Hause + geblieben"
+            }
+        ];
+
+        let mode = 'mcq';
+        let index = 0;
+        let score = 0;
+        let selectedWords = [];
+
+        function setMode(m) {
+            mode = m;
+            index = 0;
+            document.getElementById('btn-mcq').className = m === 'mcq' ? "bg-purple-600 text-white font-bold px-4 py-2 rounded-xl shadow" : "bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded-xl shadow";
+            document.getElementById('btn-order').className = m === 'order' ? "bg-purple-600 text-white font-bold px-4 py-2 rounded-xl shadow" : "bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded-xl shadow";
+            loadQ();
+        }
+
+        function loadQ() {
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            const data = mode === 'mcq' ? mcqData : orderData;
+
+            if (index >= data.length) {
+                document.getElementById('q-title').innerText = "🏆 ممتاز! أنهيت كل التمارين بنجاح!";
+                document.getElementById('q-hint').innerText = "أنت بطل في الـ Perfekt!";
+                document.getElementById('interactive-area').innerHTML = '';
+                return;
+            }
+
+            const current = data[index];
+            document.getElementById('q-hint').innerText = "💡 مساعدة: " + current.hint;
+
+            if (mode === 'mcq') {
+                document.getElementById('q-title').innerText = current.q;
+                let html = '<div class="grid grid-cols-2 gap-3">';
+                current.opts.forEach((opt, idx) => {
+                    html += `<button onclick="checkMCQ(${idx}, ${current.correct})" class="bg-white hover:bg-purple-100 border-2 border-gray-200 text-gray-800 font-bold py-3 px-4 rounded-xl shadow transition">${opt}</button>`;
+                });
+                html += '</div>';
+                document.getElementById('interactive-area').innerHTML = html;
+            } else {
+                document.getElementById('q-title').innerText = "رتب الكلمات لتكوين جملة صحيحة:";
+                selectedWords = [];
+                renderOrderUI(current.words);
+            }
+        }
+
+        function checkMCQ(selected, correct) {
+            const fb = document.getElementById('feedback');
+            fb.classList.remove('hidden');
+            if (selected === correct) {
+                score += 10;
+                fb.className = "text-center font-bold text-lg py-2 rounded-xl mb-4 bg-green-100 text-green-700";
+                fb.innerText = "🎉 إجابة صحيحة! ممتاز!";
+            } else {
+                fb.className = "text-center font-bold text-lg py-2 rounded-xl mb-4 bg-red-100 text-red-700";
+                fb.innerText = "❌ إجابة خاطئة، حاول في السؤال القادم!";
+            }
+            document.getElementById('score').innerText = "⭐ " + score;
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function renderOrderUI(words) {
+            const current = orderData[index];
+            let html = `
+                <div id="drop-zone" class="min-h-[50px] bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl p-2 flex flex-wrap gap-2 items-center justify-center mb-3">
+                    ${selectedWords.map((w, i) => `<span onclick="removeWord(${i})" class="bg-purple-600 text-white font-bold px-3 py-1 rounded-lg cursor-pointer">${w}</span>`).join('')}
+                </div>
+                <div class="flex flex-wrap gap-2 justify-center mb-4">
+                    ${words.filter(w => !selectedWords.includes(w)).map(w => `<span onclick="addWord('${w}')" class="bg-white border-2 border-purple-300 text-purple-700 font-bold px-3 py-1 rounded-lg cursor-pointer hover:bg-purple-50">${w}</span>`).join('')}
+                </div>
+                <button onclick="checkOrder()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl shadow">تحقق من الترتيب ✅</button>
+            `;
+            document.getElementById('interactive-area').innerHTML = html;
+        }
+
+        function addWord(w) {
+            selectedWords.push(w);
+            renderOrderUI(orderData[index].words);
+        }
+
+        function removeWord(i) {
+            selectedWords.splice(i, 1);
+            renderOrderUI(orderData[index].words);
+        }
+
+        function checkOrder() {
+            const current = orderData[index];
+            const fb = document.getElementById('feedback');
+            fb.classList.remove('hidden');
+
+            const isCorrect = current.accepted.some(acc => 
+                acc.length === selectedWords.length &&
+                acc.every((w, i) => w.toLowerCase() === selectedWords[i].toLowerCase())
+            );
+
+            if (isCorrect) {
+                score += 15;
+                fb.className = "text-center font-bold text-lg py-2 rounded-xl mb-4 bg-green-100 text-green-700";
+                fb.innerText = "🎉 ترتيب رائع وصحيح 100%!";
+                document.getElementById('next-btn').classList.remove('hidden');
+            } else {
+                fb.className = "text-center font-bold text-lg py-2 rounded-xl mb-4 bg-red-100 text-red-700";
+                fb.innerText = "❌ ترتيب غير صحيح، تذكر: الفعل المساعد في المركز الثاني والـ Partizip II في النهاية!";
+            }
+            document.getElementById('score').innerText = "⭐ " + score;
+        }
+
+        function nextQuestion() {
+            index++;
+            loadQ();
+        }
+
+        loadQ();
+    </script>
+</body>
+</html>
